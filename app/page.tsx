@@ -110,6 +110,7 @@ export default function Home(){
   const [description,setDescription]=useState("");
   const [triaging,setTriaging]=useState(false);
   const [aiError,setAiError]=useState("");
+  const [actionNotice,setActionNotice]=useState("");
   const [draftAnalysis,setDraftAnalysis]=useState<Triage|null>(null);
   const [bulkRunning,setBulkRunning]=useState(false);
   const [bulkOwner,setBulkOwner]=useState("");
@@ -275,10 +276,17 @@ export default function Home(){
   };
 
   const transition=(record:CaseRecord,next:Status)=>{
-    if(record.status===next)return;
+    if(record.status===next){
+      setActionNotice(record.id+" is already "+next.toLowerCase()+".");
+      return;
+    }
     const previous=record.status;
     updateCase(record.id,{status:next});
-    addAudit(record.id,"Status changed",previous+" → "+next,{status:{from:previous,to:next}});
+    const context=note.trim();
+    addAudit(record.id,"Status changed",context?previous+" → "+next+". "+context:previous+" → "+next,{status:{from:previous,to:next}});
+    setActionNotice(next==="In Progress"
+      ?record.id+" is now In Progress. Work has started and the transition was recorded in the audit history."
+      :record.id+" moved to "+next+".");
     if(terminal(next)){
       const nextCase=activeCases.find(c=>c.id!==record.id);
       setSelectedId(nextCase?.id||"");
@@ -392,38 +400,56 @@ export default function Home(){
 
   const bulkTriage=async()=>{
     const targets=cases.filter(c=>c.aiMode==="none"&&!terminal(c.status));
-    if(!targets.length)return;
-    setBulkRunning(true);setAiError("");
+    if(!targets.length){
+      setActionNotice("There are no active untriaged cases to process.");
+      return;
+    }
+    setBulkRunning(true);setAiError("");setActionNotice("");
     let success=0;
+    let lastError="";
     for(const record of targets){
       try{
         const triage=await requestTriage(record.title,record.description);
         setCases(v=>v.map(c=>c.id===record.id?{...c,...triage,aiMode:"live",status:"Needs Review",updatedAt:new Date().toISOString()}:c));
         addAudit(record.id,"AI triage generated","Bulk AI triage generated a live recommendation.");
         success++;
-      }catch{}
+      }catch(error){
+        lastError=error instanceof Error?error.message:"AI triage failed.";
+      }
     }
-    if(success!==targets.length)setAiError("Bulk AI triage completed for "+success+" of "+targets.length+" cases.");
+    if(success===targets.length)setActionNotice("AI triage completed for all "+success+" eligible case"+(success===1?"":"s")+".");
+    else setAiError("Bulk AI triage completed for "+success+" of "+targets.length+" cases."+((lastError&&success===0)?" "+lastError:""));
     setBulkRunning(false);
   };
 
   const bulkArchiveCompleted=()=>{
     const completed=cases.filter(c=>["Approved","Rejected","Resolved"].includes(c.status));
-    if(!completed.length)return;
+    if(!completed.length){
+      setActionNotice("There are no completed cases to archive.");
+      return;
+    }
     const ids=new Set(completed.map(c=>c.id));
     setCases(v=>v.map(c=>ids.has(c.id)?{...c,status:"Archived",updatedAt:new Date().toISOString()}:c));
     completed.forEach(c=>addAudit(c.id,"Case archived","Bulk archived from Admin workspace."));
+    setActionNotice("Archived "+completed.length+" completed case"+(completed.length===1?"":"s")+".");
   };
 
   const assignUnowned=()=>{
     const owner=bulkOwner.trim();
-    if(!owner)return;
+    if(!owner){
+      setActionNotice("Enter an owner or queue before assigning cases.");
+      return;
+    }
     const targets=cases.filter(c=>!terminal(c.status)&&!c.owner);
-    if(!targets.length)return;
+    if(!targets.length){
+      setActionNotice("There are no active unowned cases to assign.");
+      return;
+    }
     const ids=new Set(targets.map(c=>c.id));
     setCases(v=>v.map(c=>ids.has(c.id)?{...c,owner,updatedAt:new Date().toISOString()}:c));
     targets.forEach(c=>addAudit(c.id,"Owner assigned","Assigned to "+owner+" from Admin workspace.",{owner:{from:"",to:owner}}));
     setBulkOwner("");
+    setActionNotice("Assigned "+targets.length+" unowned case"+(targets.length===1?"":"s")+" to "+owner+".");
   };
 
   const clearWorkspace=()=>{
@@ -466,6 +492,7 @@ export default function Home(){
       </header>
 
       {aiError&&<div className="aiError"><AlertTriangle size={16}/><span>{aiError}</span><button onClick={()=>setAiError("")}>Dismiss</button></div>}
+      {actionNotice&&<div className="actionNotice"><CheckCircle2 size={16}/><span>{actionNotice}</span><button onClick={()=>setActionNotice("")}>Dismiss</button></div>}
 
       {view==="dashboard"&&workspace==="admin"&&<>
         <div className="metrics five">
@@ -577,7 +604,9 @@ export default function Home(){
               {editingRecommendation?<><button onClick={()=>setEditingRecommendation(false)}>Cancel</button><button className="approve" onClick={()=>saveDraft(selected,"ai")}>Save AI changes</button></>:<>
                 {selected.aiMode!=="live"&&<button onClick={()=>runAi(selected)} disabled={triaging}><Play size={14}/>{triaging?"Generating...":"Run AI triage"}</button>}
                 {selected.aiMode==="live"&&<button onClick={()=>beginEdit(selected,"ai")}><Pencil size={14}/>Modify recommendation</button>}
-                {selected.status!=="In Progress"&&<button onClick={()=>transition(selected,"In Progress")}>Start work</button>}
+                {selected.status!=="In Progress"
+                  ?<button onClick={()=>transition(selected,"In Progress")}><Play size={14}/>Start work</button>
+                  :<button className="inProgressButton" disabled><Clock3 size={14}/>In progress</button>}
                 <button onClick={()=>transition(selected,"Rejected")}>Reject</button>
                 <button className="approve" onClick={()=>transition(selected,"Approved")}><CheckCircle2 size={15}/>Approve</button>
               </>}

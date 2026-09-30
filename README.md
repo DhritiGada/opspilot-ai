@@ -2,27 +2,31 @@
 
 **Human-supervised AI for operational case triage.**
 
-OpsPilot AI is a product-builder project exploring how LLMs can accelerate operations work without removing human accountability. Incoming cases are converted into structured recommendations containing a summary, classification, priority, suggested owner, confidence, and next action. A human reviewer can approve, modify, or reject the recommendation before action.
+OpsPilot AI is a product-builder project exploring how AI can accelerate operations work without removing human accountability. Incoming cases become structured recommendations containing a summary, classification, priority, suggested owner, confidence, and next action. A human reviewer can approve, modify, or reject the recommendation before action.
 
-## What you can demo
+## Live product workflow
 
-- Operations command center with queue-level metrics
-- Searchable synthetic case queue
-- Structured AI recommendation panel
-- Confidence and risk-aware review UX
-- Approve, modify, and reject workflow
-- Reviewer context and visible decision state
-- Responsive interface for desktop and smaller screens
+- Create a synthetic operational case from the command center
+- Generate a structured triage recommendation in transparent **Demo AI mode**
+- Review classification, priority, owner, confidence, summary, and next action
+- Approve, modify, or reject the recommendation with reviewer context
+- Preserve cases and audit events in browser storage across refreshes
+- Inspect a dedicated audit-history view
+- Search the case queue and monitor reactive queue metrics
 
 ## Product principle
 
 > AI recommends. Humans decide.
 
-The product deliberately avoids autonomous consequential actions. This creates an explicit control point for review, overrides, and future audit history.
+The product deliberately avoids autonomous consequential actions. Confidence is treated as a review signal, not proof of correctness.
+
+## Current AI boundary
+
+The public demo currently uses deterministic local triage so it remains functional without exposing API credentials or pretending a model call occurred. The UI labels this explicitly as **Demo AI mode**. The next model-integration milestone will put provider logic behind a server-side endpoint while preserving the same human-review contract.
 
 ## Tech stack
 
-Next.js 14, React, TypeScript, CSS, and Lucide icons. The first slice intentionally uses synthetic in-memory cases so the core workflow can be evaluated before adding persistence and external model credentials.
+Next.js 14, React, TypeScript, CSS, Lucide icons, and browser localStorage for portfolio-demo persistence. All included cases are synthetic.
 
 ## Run locally
 
@@ -33,10 +37,6 @@ npm run dev
 
 Open `http://localhost:3000`.
 
-## Roadmap
-
-The next milestone adds persistent cases and audit events, case creation, server-side structured LLM triage, recommendation evaluation, and deployment configuration.
-
 ## Product documentation
 
 - [MVP PRD](docs/PRD.md)
@@ -46,6 +46,6 @@ The next milestone adds persistent cases and audit events, case creation, server
 
 ## How AI is used in the build
 
-AI coding agents are used as implementation collaborators. Product framing, scope, requirements, UX choices, architecture tradeoffs, acceptance criteria, testing decisions, and release decisions are explicitly documented rather than attributed to the agent.
+AI coding agents are implementation collaborators. Product framing, scope, requirements, UX choices, architecture tradeoffs, acceptance criteria, testing decisions, and release decisions remain human-owned.
 
 No production usage or business-impact metrics are claimed for this portfolio project.

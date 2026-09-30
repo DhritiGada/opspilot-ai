@@ -28,9 +28,12 @@ export default function Home(){
  useEffect(()=>{try{const storedCases=localStorage.getItem("opspilot-v3-cases"),storedAudits=localStorage.getItem("opspilot-v3-audits");if(storedCases)setCases(JSON.parse(storedCases));if(storedAudits)setAudits(JSON.parse(storedAudits));}catch{}finally{setHydrated(true)}},[]);
  useEffect(()=>{if(hydrated)localStorage.setItem("opspilot-v3-cases",JSON.stringify(cases));},[cases,hydrated]);
  useEffect(()=>{if(hydrated)localStorage.setItem("opspilot-v3-audits",JSON.stringify(audits));},[audits,hydrated]);
- const activeCases=cases.filter(c=>!["Approved","Rejected","Resolved"].includes(c.status));\n const selected=activeCases.find(c=>c.id===selectedId)||activeCases[0];
+ const activeCases=cases.filter(c=>!["Approved","Rejected","Resolved"].includes(c.status));
+ const selected=activeCases.find(c=>c.id===selectedId)||activeCases[0];
  const filtered=activeCases.filter(c=>(c.id+c.title+c.category).toLowerCase().includes(query.toLowerCase()));
- const high=activeCases.filter(c=>c.priority==="High").length;\n const liveAiCases=cases.filter(c=>c.aiMode==="live");\n const liveAiAvg=liveAiCases.length?Math.round(liveAiCases.reduce((a,c)=>a+c.confidence,0)/liveAiCases.length):null;
+ const high=activeCases.filter(c=>c.priority==="High").length;
+ const liveAiCases=cases.filter(c=>c.aiMode==="live");
+ const liveAiAvg=liveAiCases.length?Math.round(liveAiCases.reduce((a,c)=>a+c.confidence,0)/liveAiCases.length):null;
  const selectedAudits=audits.filter(a=>a.caseId===selected?.id);
  const recordDecision=(status:"Approved"|"Rejected")=>{if(!selected)return;const next=activeCases.find(c=>c.id!==selected.id);setCases(v=>v.map(c=>c.id===selected.id?{...c,status}:c));setAudits(v=>[{id:crypto.randomUUID(),caseId:selected.id,decision:status,note:note.trim()||`Recommendation ${status.toLowerCase()} by human reviewer. Case removed from active review queue.`,at:new Date().toISOString()},...v]);setSelectedId(next?.id||"");setNote("");setEditing(false);};
  const startModify=()=>{if(!selected)return;setEditSummary(selected.summary);setEditCategory(selected.category);setEditPriority(selected.priority);setEditOwner(selected.owner);setEditAction(selected.action);setEditing(true);};

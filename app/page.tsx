@@ -3,7 +3,8 @@ import {useEffect,useMemo,useState} from "react";
 import {AlertTriangle,CheckCircle2,Clock3,Plus,Search,Sparkles,ShieldCheck,X} from "lucide-react";
 
 type Priority="High"|"Medium"|"Low";
-type Triage={category:string,priority:Priority,confidence:number,summary:string,action:string,owner:string};\ntype Case={id:string,title:string,description:string,category:string,priority:Priority,status:string,confidence:number,summary:string,action:string,owner:string,createdAt:string,aiMode?:"live"|"demo"};
+type Triage={category:string,priority:Priority,confidence:number,summary:string,action:string,owner:string};
+type Case={id:string,title:string,description:string,category:string,priority:Priority,status:string,confidence:number,summary:string,action:string,owner:string,createdAt:string,aiMode?:"live"|"demo"};
 type Audit={id:string,caseId:string,decision:string,note:string,at:string};
 const seed:Case[]=[
 {id:"OP-1042",title:"Payment processed but balance remains open",description:"Customer payment completed but the account still shows an outstanding balance. Customer contacted support twice and needs resolution before tomorrow.",category:"Payment reconciliation",priority:"High",status:"Needs review",confidence:92,summary:"Payment appears successful while the account state still shows an outstanding balance. Two prior contacts and a next-day deadline increase customer impact.",action:"Verify the transaction record, reconcile account state, then confirm the corrected balance with the customer.",owner:"Payments Operations",createdAt:"2026-09-30T09:15:00.000Z"},

@@ -7,7 +7,7 @@ OpsPilot AI is a product-builder project exploring how AI can accelerate operati
 ## Live product workflow
 
 - Create a synthetic operational case from the command center
-- Generate a structured triage recommendation in transparent **Demo AI mode**
+- Request a structured triage recommendation from a server-side AI endpoint, with a transparent deterministic fallback
 - Review classification, priority, owner, confidence, summary, and next action
 - Approve, modify, or reject the recommendation with reviewer context
 - Preserve cases and audit events in browser storage across refreshes
@@ -22,7 +22,7 @@ The product deliberately avoids autonomous consequential actions. Confidence is 
 
 ## Current AI boundary
 
-The public demo currently uses deterministic local triage so it remains functional without exposing API credentials or pretending a model call occurred. The UI labels this explicitly as **Demo AI mode**. The next model-integration milestone will put provider logic behind a server-side endpoint while preserving the same human-review contract.
+New case intake calls a server-side `/api/triage` endpoint backed by the OpenAI Responses API and strict structured output. The API key remains server-side. If the AI service is unavailable or unconfigured, OpsPilot falls back to deterministic triage and labels that result as Demo AI. The human-review contract is unchanged.\n\n### Environment\n\nSet `OPENAI_API_KEY` in the server/deployment environment. `OPENAI_MODEL` is optional; the route has a default model. Never commit secrets to the repository.
 
 ## Tech stack
 

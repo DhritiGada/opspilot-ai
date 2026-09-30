@@ -108,6 +108,14 @@ export default function Home(){
   const [showNew,setShowNew]=useState(false);
   const [title,setTitle]=useState("");
   const [description,setDescription]=useState("");
+  const [newCustomerId,setNewCustomerId]=useState("");
+  const [newTransactionId,setNewTransactionId]=useState("");
+  const [newAmount,setNewAmount]=useState("");
+  const [newCurrency,setNewCurrency]=useState("USD");
+  const [newProcessorRef,setNewProcessorRef]=useState("");
+  const [newPaymentStatus,setNewPaymentStatus]=useState("");
+  const [newReconciliationStatus,setNewReconciliationStatus]=useState("");
+  const [newDueDate,setNewDueDate]=useState("");
   const [triaging,setTriaging]=useState(false);
   const [aiError,setAiError]=useState("");
   const [actionNotice,setActionNotice]=useState("");
@@ -228,20 +236,28 @@ export default function Home(){
       riskSignals:triage.riskSignals||[],
       missingInformation:triage.missingInformation||[],
       resolutionPlan:triage.resolutionPlan||[],
-      customerId:"",
-      transactionId:"",
-      amount:null,
-      currency:"",
-      processorRef:"",
-      paymentStatus:"",
-      reconciliationStatus:"",
-      dueDate:""
+      customerId:newCustomerId.trim(),
+      transactionId:newTransactionId.trim(),
+      amount:newAmount.trim()===""?null:Number(newAmount),
+      currency:newAmount.trim()===""?"":newCurrency.trim(),
+      processorRef:newProcessorRef.trim(),
+      paymentStatus:newPaymentStatus.trim(),
+      reconciliationStatus:newReconciliationStatus.trim(),
+      dueDate:newDueDate
     };
     setCases(v=>[record,...v]);
     addAudit(record.id,"Case created",aiMode==="live"?"Case created with a live AI recommendation.":"Case created without an AI recommendation.");
     setSelectedId(record.id);
     setTitle("");
     setDescription("");
+    setNewCustomerId("");
+    setNewTransactionId("");
+    setNewAmount("");
+    setNewCurrency("USD");
+    setNewProcessorRef("");
+    setNewPaymentStatus("");
+    setNewReconciliationStatus("");
+    setNewDueDate("");
     setDraftAnalysis(null);
     setShowNew(false);
     setTriaging(false);
@@ -555,6 +571,8 @@ export default function Home(){
           <select value={ownerFilter} onChange={e=>setOwnerFilter(e.target.value)}><option value="All">All owners</option>{owners.map(o=><option key={o}>{o}</option>)}</select>
           <select value={sourceFilter} onChange={e=>setSourceFilter(e.target.value)}><option value="All">All recommendation states</option><option value="live">AI generated</option><option value="none">Not AI triaged</option></select>
           <select value={sortBy} onChange={e=>setSortBy(e.target.value)}><option value="priority">Priority first</option><option value="due">Due date</option><option value="updated">Recently updated</option></select>
+          <button onClick={exportCases}><Download size={14}/>Export cases</button>
+          <button onClick={exportAudits}><Download size={14}/>Export audit</button>
         </div>
 
         <div className="grid">
@@ -640,15 +658,25 @@ export default function Home(){
       </div>}
     </section>
 
-    {showNew&&<div className="modalBackdrop" onMouseDown={()=>{setShowNew(false);setTitle("");setDescription("");setDraftAnalysis(null)}}>
+    {showNew&&<div className="modalBackdrop" onMouseDown={()=>{setShowNew(false);setTitle("");setDescription("");setNewCustomerId("");setNewTransactionId("");setNewAmount("");setNewCurrency("USD");setNewProcessorRef("");setNewPaymentStatus("");setNewReconciliationStatus("");setNewDueDate("");setDraftAnalysis(null)}}>
       <div className="modal" onMouseDown={e=>e.stopPropagation()}>
-        <div className="modalHead"><div><p className="eyebrow">NEW CASE</p><h2>Create operational case</h2></div><button className="iconBtn" onClick={()=>{setShowNew(false);setTitle("");setDescription("");setDraftAnalysis(null)}}><X size={18}/></button></div>
+        <div className="modalHead"><div><p className="eyebrow">NEW CASE</p><h2>Create operational case</h2></div><button className="iconBtn" onClick={()=>{setShowNew(false);setTitle("");setDescription("");setNewCustomerId("");setNewTransactionId("");setNewAmount("");setNewCurrency("USD");setNewProcessorRef("");setNewPaymentStatus("");setNewReconciliationStatus("");setNewDueDate("");setDraftAnalysis(null)}}><X size={18}/></button></div>
         <label>CASE TITLE</label><input className="field" value={title} onChange={e=>setTitle(e.target.value)} placeholder="Describe the operational issue"/>
         <label>CASE DESCRIPTION</label><textarea className="field large" value={description} onChange={e=>{setDescription(e.target.value);setDraftAnalysis(null)}} placeholder="Add context, impact, timing, and relevant signals"/>
+        <div className="intakeGrid">
+          <div><label>CUSTOMER ID</label><input className="field" value={newCustomerId} onChange={e=>setNewCustomerId(e.target.value)} placeholder="Customer or account ID"/></div>
+          <div><label>TRANSACTION ID</label><input className="field" value={newTransactionId} onChange={e=>setNewTransactionId(e.target.value)} placeholder="Transaction ID"/></div>
+          <div><label>AMOUNT</label><input className="field" type="number" min="0" step="0.01" value={newAmount} onChange={e=>setNewAmount(e.target.value)} placeholder="0.00"/></div>
+          <div><label>CURRENCY</label><input className="field" value={newCurrency} onChange={e=>setNewCurrency(e.target.value.toUpperCase())} placeholder="USD"/></div>
+          <div><label>PROCESSOR REF</label><input className="field" value={newProcessorRef} onChange={e=>setNewProcessorRef(e.target.value)} placeholder="Processor reference"/></div>
+          <div><label>PAYMENT STATUS</label><input className="field" value={newPaymentStatus} onChange={e=>setNewPaymentStatus(e.target.value)} placeholder="Pending, settled, failed..."/></div>
+          <div><label>RECONCILIATION STATUS</label><input className="field" value={newReconciliationStatus} onChange={e=>setNewReconciliationStatus(e.target.value)} placeholder="Matched, unmatched..."/></div>
+          <div><label>DUE DATE</label><input className="field" type="date" value={newDueDate} onChange={e=>setNewDueDate(e.target.value)}/></div>
+        </div>
         <div className="draftAiBar"><button disabled={!title.trim()||!description.trim()||triaging} onClick={analyzeDraft}><Sparkles size={15}/>{triaging?"Analyzing...":"Analyze description with AI"}</button><span>Preview AI guidance before creating the case.</span></div>
         {draftAnalysis&&<div className="draftPreview"><div className="draftPreviewHead"><Sparkles size={16}/><b>AI case analysis</b><span>{draftAnalysis.confidence}% confidence</span></div><div className="facts"><div><label>CLASSIFICATION</label><b>{draftAnalysis.category}</b></div><div><label>PRIORITY</label><b>{draftAnalysis.priority}</b></div></div><div className="facts"><div><label>OWNER</label><b>{draftAnalysis.owner}</b></div><div><label>NEXT ACTION</label><b>{draftAnalysis.action}</b></div></div><label>SUMMARY</label><p>{draftAnalysis.summary}</p>{draftAnalysis.riskSignals.length>0&&<><label>RISK SIGNALS</label><div className="tagList">{draftAnalysis.riskSignals.map(x=><span key={x}>{x}</span>)}</div></>}{draftAnalysis.missingInformation.length>0&&<><label>MISSING INFORMATION</label><ul className="aiList">{draftAnalysis.missingInformation.map(x=><li key={x}>{x}</li>)}</ul></>}{draftAnalysis.resolutionPlan.length>0&&<><label>PROPOSED RESOLUTION PLAN</label><ol className="aiList">{draftAnalysis.resolutionPlan.map(x=><li key={x}>{x}</li>)}</ol></>}</div>}
         <div className="modalHint"><Sparkles size={16}/><span>OpsPilot will request a server-side AI recommendation. If AI is unavailable, the case is created without generated fields.</span></div>
-        <div className="actions"><button onClick={()=>{setShowNew(false);setTitle("");setDescription("");setDraftAnalysis(null)}}>Cancel</button><button className="approve" disabled={!title.trim()||!description.trim()||triaging} onClick={createCase}>{triaging?"Generating...":draftAnalysis?"Create with AI analysis":"Create case"}</button></div>
+        <div className="actions"><button onClick={()=>{setShowNew(false);setTitle("");setDescription("");setNewCustomerId("");setNewTransactionId("");setNewAmount("");setNewCurrency("USD");setNewProcessorRef("");setNewPaymentStatus("");setNewReconciliationStatus("");setNewDueDate("");setDraftAnalysis(null)}}>Cancel</button><button className="approve" disabled={!title.trim()||!description.trim()||triaging} onClick={createCase}>{triaging?"Generating...":draftAnalysis?"Create with AI analysis":"Create case"}</button></div>
       </div>
     </div>}
   </main>;

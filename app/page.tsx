@@ -20,6 +20,9 @@ type Triage={
   summary:string;
   action:string;
   owner:string;
+  riskSignals:string[];
+  missingInformation:string[];
+  resolutionPlan:string[];
 };
 
 type CaseRecord=Triage&{
@@ -38,6 +41,9 @@ type CaseRecord=Triage&{
   paymentStatus:string;
   reconciliationStatus:string;
   dueDate:string;
+  riskSignals:string[];
+  missingInformation:string[];
+  resolutionPlan:string[];
 };
 
 type Audit={
@@ -104,6 +110,9 @@ export default function Home(){
   const [description,setDescription]=useState("");
   const [triaging,setTriaging]=useState(false);
   const [aiError,setAiError]=useState("");
+  const [draftAnalysis,setDraftAnalysis]=useState<Triage|null>(null);
+  const [bulkRunning,setBulkRunning]=useState(false);
+  const [bulkOwner,setBulkOwner]=useState("");
   const [note,setNote]=useState("");
 
   const [editingCase,setEditingCase]=useState(false);
@@ -194,11 +203,10 @@ export default function Home(){
     setTriaging(true);
     setAiError("");
     const now=new Date().toISOString();
-    let triage:Partial<Triage>={};
-    let aiMode:AiMode="none";
+    let triage:Partial<Triage>=draftAnalysis||{};
+    let aiMode:AiMode=draftAnalysis?"live":"none";
     try{
-      triage=await requestTriage(title.trim(),description.trim());
-      aiMode="live";
+      if(!draftAnalysis){triage=await requestTriage(title.trim(),description.trim());aiMode="live";}
     }catch(error){
       setAiError(error instanceof Error?error.message:"AI triage is unavailable. The case was created without a recommendation.");
     }
@@ -216,6 +224,9 @@ export default function Home(){
       summary:triage.summary||"",
       action:triage.action||"",
       owner:triage.owner||"",
+      riskSignals:triage.riskSignals||[],
+      missingInformation:triage.missingInformation||[],
+      resolutionPlan:triage.resolutionPlan||[],
       customerId:"",
       transactionId:"",
       amount:null,
@@ -230,7 +241,20 @@ export default function Home(){
     setSelectedId(record.id);
     setTitle("");
     setDescription("");
+    setDraftAnalysis(null);
     setShowNew(false);
+    setTriaging(false);
+  };
+
+  const analyzeDraft=async()=>{
+    if(!title.trim()||!description.trim()||triaging)return;
+    setTriaging(true);setAiError("");setDraftAnalysis(null);
+    try{
+      const result=await requestTriage(title.trim(),description.trim());
+      setDraftAnalysis(result);
+    }catch(error){
+      setAiError(error instanceof Error?error.message:"AI analysis is unavailable.");
+    }
     setTriaging(false);
   };
 
@@ -351,7 +375,8 @@ export default function Home(){
         processorRef:row.processor_ref||"",
         paymentStatus:row.payment_status||"",
         reconciliationStatus:row.reconciliation_status||"",
-        dueDate:row.due_date||""
+        dueDate:row.due_date||"",
+        riskSignals:[],missingInformation:[],resolutionPlan:[]
       });
     }
     if(created.length){
@@ -363,6 +388,42 @@ export default function Home(){
     }
     setAiError("Import complete: "+created.length+" accepted, "+rejected+" rejected.");
     if(fileRef.current)fileRef.current.value="";
+  };
+
+  const bulkTriage=async()=>{
+    const targets=cases.filter(c=>c.aiMode==="none"&&!terminal(c.status));
+    if(!targets.length)return;
+    setBulkRunning(true);setAiError("");
+    let success=0;
+    for(const record of targets){
+      try{
+        const triage=await requestTriage(record.title,record.description);
+        setCases(v=>v.map(c=>c.id===record.id?{...c,...triage,aiMode:"live",status:"Needs Review",updatedAt:new Date().toISOString()}:c));
+        addAudit(record.id,"AI triage generated","Bulk AI triage generated a live recommendation.");
+        success++;
+      }catch{}
+    }
+    if(success!==targets.length)setAiError("Bulk AI triage completed for "+success+" of "+targets.length+" cases.");
+    setBulkRunning(false);
+  };
+
+  const bulkArchiveCompleted=()=>{
+    const completed=cases.filter(c=>["Approved","Rejected","Resolved"].includes(c.status));
+    if(!completed.length)return;
+    const ids=new Set(completed.map(c=>c.id));
+    setCases(v=>v.map(c=>ids.has(c.id)?{...c,status:"Archived",updatedAt:new Date().toISOString()}:c));
+    completed.forEach(c=>addAudit(c.id,"Case archived","Bulk archived from Admin workspace."));
+  };
+
+  const assignUnowned=()=>{
+    const owner=bulkOwner.trim();
+    if(!owner)return;
+    const targets=cases.filter(c=>!terminal(c.status)&&!c.owner);
+    if(!targets.length)return;
+    const ids=new Set(targets.map(c=>c.id));
+    setCases(v=>v.map(c=>ids.has(c.id)?{...c,owner,updatedAt:new Date().toISOString()}:c));
+    targets.forEach(c=>addAudit(c.id,"Owner assigned","Assigned to "+owner+" from Admin workspace.",{owner:{from:"",to:owner}}));
+    setBulkOwner("");
   };
 
   const clearWorkspace=()=>{
@@ -433,6 +494,18 @@ export default function Home(){
               <StatusRow label="Awaiting AI triage" value={untriaged}/>
             </div>
           </section>
+          <section className="adminPanel">
+            <div className="panelHead"><div><h2>AI operations</h2><small>Admin-only controls</small></div></div>
+            <p className="panelCopy">Generate recommendations for every active case that has not been triaged yet.</p>
+            <button className="adminAction" onClick={bulkTriage} disabled={bulkRunning||untriaged===0}><Sparkles size={14}/>{bulkRunning?"Running AI...":"Triage all untriaged"}</button>
+            <div className="statusRows"><StatusRow label="Awaiting AI" value={untriaged}/><StatusRow label="AI generated" value={liveAi.length}/></div>
+          </section>
+          <section className="adminPanel">
+            <div className="panelHead"><div><h2>Queue controls</h2><small>Admin-only actions</small></div></div>
+            <label>ASSIGN UNOWNED CASES</label>
+            <div className="inlineControl"><input value={bulkOwner} onChange={e=>setBulkOwner(e.target.value)} placeholder="Owner or queue"/><button onClick={assignUnowned}>Assign</button></div>
+            <button className="adminAction secondary" onClick={bulkArchiveCompleted}><Archive size={14}/>Archive completed cases</button>
+          </section>
           <section className="adminPanel widePanel">
             <div className="panelHead"><div><h2>Recent activity</h2><small>Latest audit events</small></div><button onClick={()=>setView("audit")}>View full audit</button></div>
             {audits.length===0?<div className="empty compact"><Clock3/><p>No activity has been recorded yet.</p></div>:audits.slice(0,6).map(a=><button className="auditRow auditRowButton" key={a.id} onClick={()=>{setAuditCaseId(a.caseId);setView("audit")}}><div><b>{a.caseId}</b><strong>{a.action}</strong><p>{a.actor} · {a.note}</p></div><time>{new Date(a.at).toLocaleString()}</time></button>)}
@@ -491,6 +564,9 @@ export default function Home(){
                 <label>SUMMARY</label><p>{selected.summary}</p>
                 <div className="facts"><div><label>CLASSIFICATION</label><b>{selected.category}</b></div><div><label>SUGGESTED OWNER</label><b>{selected.owner}</b></div></div>
                 <label>RECOMMENDED NEXT ACTION</label><p>{selected.action}</p>
+                {selected.riskSignals.length>0&&<><label>RISK SIGNALS</label><div className="tagList">{selected.riskSignals.map(x=><span key={x}>{x}</span>)}</div></>}
+                {selected.missingInformation.length>0&&<><label>MISSING INFORMATION</label><ul className="aiList">{selected.missingInformation.map(x=><li key={x}>{x}</li>)}</ul></>}
+                {selected.resolutionPlan.length>0&&<><label>PROPOSED RESOLUTION PLAN</label><ol className="aiList">{selected.resolutionPlan.map(x=><li key={x}>{x}</li>)}</ol></>}
               </>:<div className="empty compact"><Sparkles/><p>No AI recommendation exists for this case.</p></div>}
               <div className="guardrail"><AlertTriangle size={17}/><span>AI recommendations do not execute operational actions.</span></div>
             </div>
@@ -535,13 +611,15 @@ export default function Home(){
       </div>}
     </section>
 
-    {showNew&&<div className="modalBackdrop" onMouseDown={()=>{setShowNew(false);setTitle("");setDescription("")}}>
+    {showNew&&<div className="modalBackdrop" onMouseDown={()=>{setShowNew(false);setTitle("");setDescription("");setDraftAnalysis(null)}}>
       <div className="modal" onMouseDown={e=>e.stopPropagation()}>
-        <div className="modalHead"><div><p className="eyebrow">NEW CASE</p><h2>Create operational case</h2></div><button className="iconBtn" onClick={()=>{setShowNew(false);setTitle("");setDescription("")}}><X size={18}/></button></div>
+        <div className="modalHead"><div><p className="eyebrow">NEW CASE</p><h2>Create operational case</h2></div><button className="iconBtn" onClick={()=>{setShowNew(false);setTitle("");setDescription("");setDraftAnalysis(null)}}><X size={18}/></button></div>
         <label>CASE TITLE</label><input className="field" value={title} onChange={e=>setTitle(e.target.value)} placeholder="Describe the operational issue"/>
-        <label>CASE DESCRIPTION</label><textarea className="field large" value={description} onChange={e=>setDescription(e.target.value)} placeholder="Add context, impact, timing, and relevant signals"/>
+        <label>CASE DESCRIPTION</label><textarea className="field large" value={description} onChange={e=>{setDescription(e.target.value);setDraftAnalysis(null)}} placeholder="Add context, impact, timing, and relevant signals"/>
+        <div className="draftAiBar"><button disabled={!title.trim()||!description.trim()||triaging} onClick={analyzeDraft}><Sparkles size={15}/>{triaging?"Analyzing...":"Analyze description with AI"}</button><span>Preview AI guidance before creating the case.</span></div>
+        {draftAnalysis&&<div className="draftPreview"><div className="draftPreviewHead"><Sparkles size={16}/><b>AI case analysis</b><span>{draftAnalysis.confidence}% confidence</span></div><div className="facts"><div><label>CLASSIFICATION</label><b>{draftAnalysis.category}</b></div><div><label>PRIORITY</label><b>{draftAnalysis.priority}</b></div></div><div className="facts"><div><label>OWNER</label><b>{draftAnalysis.owner}</b></div><div><label>NEXT ACTION</label><b>{draftAnalysis.action}</b></div></div><label>SUMMARY</label><p>{draftAnalysis.summary}</p>{draftAnalysis.riskSignals.length>0&&<><label>RISK SIGNALS</label><div className="tagList">{draftAnalysis.riskSignals.map(x=><span key={x}>{x}</span>)}</div></>}{draftAnalysis.missingInformation.length>0&&<><label>MISSING INFORMATION</label><ul className="aiList">{draftAnalysis.missingInformation.map(x=><li key={x}>{x}</li>)}</ul></>}{draftAnalysis.resolutionPlan.length>0&&<><label>PROPOSED RESOLUTION PLAN</label><ol className="aiList">{draftAnalysis.resolutionPlan.map(x=><li key={x}>{x}</li>)}</ol></>}</div>}
         <div className="modalHint"><Sparkles size={16}/><span>OpsPilot will request a server-side AI recommendation. If AI is unavailable, the case is created without generated fields.</span></div>
-        <div className="actions"><button onClick={()=>{setShowNew(false);setTitle("");setDescription("")}}>Cancel</button><button className="approve" disabled={!title.trim()||!description.trim()||triaging} onClick={createCase}>{triaging?"Generating...":"Create case"}</button></div>
+        <div className="actions"><button onClick={()=>{setShowNew(false);setTitle("");setDescription("");setDraftAnalysis(null)}}>Cancel</button><button className="approve" disabled={!title.trim()||!description.trim()||triaging} onClick={createCase}>{triaging?"Generating...":draftAnalysis?"Create with AI analysis":"Create case"}</button></div>
       </div>
     </div>}
   </main>;

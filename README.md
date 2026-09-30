@@ -2,6 +2,8 @@
 
 **Human-supervised AI for operational case triage.**
 
+Live Prototype: opspilot-ai-six.vercel.app
+
 OpsPilot AI is a product-builder project exploring how AI can accelerate operations work without removing human accountability. Incoming cases become structured recommendations containing a summary, classification, priority, suggested owner, confidence, and next action. A human reviewer can approve, modify, or reject the recommendation before action.
 
 ## Live product workflow

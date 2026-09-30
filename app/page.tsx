@@ -114,6 +114,8 @@ export default function Home(){
   const [bulkRunning,setBulkRunning]=useState(false);
   const [bulkOwner,setBulkOwner]=useState("");
   const [note,setNote]=useState("");
+  const [resolutionResult,setResolutionResult]=useState<any>(null);
+  const [resolutionChecking,setResolutionChecking]=useState(false);
 
   const [editingCase,setEditingCase]=useState(false);
   const [editingRecommendation,setEditingRecommendation]=useState(false);
@@ -256,6 +258,27 @@ export default function Home(){
       setAiError(error instanceof Error?error.message:"AI analysis is unavailable.");
     }
     setTriaging(false);
+  };
+
+  const checkResolution=async(record:CaseRecord)=>{
+    if(resolutionChecking)return;
+    setResolutionChecking(true);
+    setAiError("");
+    setResolutionResult(null);
+    try{
+      const response=await fetch("/api/resolve",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({caseRecord:record,reviewerNotes:note})
+      });
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok||!data.result)throw new Error(data.error||"AI resolution check is unavailable.");
+      setResolutionResult(data.result);
+      addAudit(record.id,"Resolution readiness checked","AI evaluated whether the case appears ready to resolve. No status was changed.");
+    }catch(error){
+      setAiError(error instanceof Error?error.message:"AI resolution check is unavailable.");
+    }
+    setResolutionChecking(false);
   };
 
   const runAi=async(record:CaseRecord)=>{
@@ -534,7 +557,7 @@ export default function Home(){
           <div className="queue">
             <div className="queueHead"><div><h2>Case queue</h2><small>{filtered.length} active cases</small></div></div>
             {filtered.length===0?<div className="empty"><Search/><h2>No active cases</h2><p>Create a case or import records from the Admin workspace.</p></div>:filtered.map(c=>
-              <button key={c.id} onClick={()=>{setSelectedId(c.id);setEditingCase(false);setEditingRecommendation(false);setNote("")}} className={"case "+(selected?.id===c.id?"selected":"")}>
+              <button key={c.id} onClick={()=>{setSelectedId(c.id);setEditingCase(false);setEditingRecommendation(false);setNote("");setResolutionResult(null)}} className={"case "+(selected?.id===c.id?"selected":"")}>
                 <div className="caseTop"><b>{c.id}</b><span className={"pill "+(c.priority||"unset").toLowerCase()}>{c.priority||"Not set"}</span></div>
                 <strong>{c.title}</strong>
                 <div className="meta"><span>{c.category||"Unclassified"}</span><span>{c.status}</span></div>
@@ -582,6 +605,20 @@ export default function Home(){
                 <button className="approve" onClick={()=>transition(selected,"Approved")}><CheckCircle2 size={15}/>Approve</button>
               </>}
             </div>
+            {resolutionResult&&<div className="resolutionCard">
+              <div className="resolutionHead"><Sparkles size={16}/><b>AI Resolution Assistant</b><span>{resolutionResult.confidence}% confidence</span></div>
+              <div className={"resolutionOutcome "+resolutionResult.outcome.toLowerCase().replaceAll(" ","-")}>{resolutionResult.outcome}</div>
+              <p>{resolutionResult.rationale}</p>
+              {resolutionResult.evidenceSatisfied?.length>0&&<><label>EVIDENCE SATISFIED</label><ul>{resolutionResult.evidenceSatisfied.map((x:string)=><li key={x}>{x}</li>)}</ul></>}
+              {resolutionResult.blockers?.length>0&&<><label>BLOCKERS / MISSING EVIDENCE</label><ul>{resolutionResult.blockers.map((x:string)=><li key={x}>{x}</li>)}</ul></>}
+              {resolutionResult.recommendedNextSteps?.length>0&&<><label>RECOMMENDED NEXT STEPS</label><ol>{resolutionResult.recommendedNextSteps.map((x:string)=><li key={x}>{x}</li>)}</ol></>}
+              <div className="guardrail"><AlertTriangle size={16}/><span>This is a recommendation only. The worker decides whether to resolve, escalate, or continue investigation.</span></div>
+              <div className="actions">
+                {resolutionResult.outcome==="Ready to resolve"&&<button className="approve" onClick={()=>transition(selected,"Resolved")}><CheckCircle2 size={15}/>Resolve case</button>}
+                {resolutionResult.outcome==="Escalate"&&<button onClick={()=>transition(selected,"In Progress")}>Keep in progress</button>}
+                <button onClick={()=>setResolutionResult(null)}>Dismiss</button>
+              </div>
+            </div>}
             <div className="audit"><Clock3 size={16}/><span>Case events</span><b>{selectedAudits.length}</b><small>{sourceLabel(selected.aiMode)}</small></div>
           </div>:<div className="detail empty"><CheckCircle2/><h2>Queue clear</h2><p>There are no active cases.</p></div>}
         </div>

@@ -27,3 +27,5 @@ Operations analyst managing a queue of customer or internal cases.
 
 ## Next milestone
 Persist cases and audit events, add case creation, connect structured LLM triage, and evaluate recommendations against a labeled test set.
+
+<!-- CI verification touch: workflow corrected after initial bootstrap failure. -->

@@ -1,81 +1,94 @@
-# OpsPilot AI
+# OpsPilot Control
 
-**Human-controlled AI for operational case management.**
+**AI-assisted operations workspace with human-controlled decision making.**
 
-OpsPilot AI is a product-builder project that explores how AI can help operations teams triage, investigate, prioritize, and resolve cases while keeping consequential decisions with people.
+OpsPilot Control is a working product prototype for operational case management. It is designed to help operations teams intake cases, structure messy context, prioritize work, generate AI-assisted recommendations, manage queues, and preserve an auditable record of human decisions.
 
-The product combines an AI-assisted **Case Worker workspace** with an **Admin operations dashboard**, structured case data, queue controls, audit history, and data-management tools. AI generates recommendations and supporting context, but it does not execute operational actions.
+The product has two distinct experiences:
 
-> **AI recommends. People decide.**
+- **Case Worker Workspace** for reviewing, investigating, and resolving operational cases
+- **Admin Workspace** for monitoring workload, AI usage, queue health, exception value, audit activity, and data operations
 
-## What OpsPilot does
+> **AI can recommend. People own operational decisions.**
 
-A case can begin as a manually created record or an imported operational record. OpsPilot can analyze the case through a server-side AI endpoint and return a structured recommendation containing:
+## Current product experience
+
+### Case Worker Workspace
+
+The main worker view is **My Case Queue**.
+
+It gives an operator a focused view of day-to-day case work, including:
+
+- My active queue
+- High-priority cases
+- Cases awaiting AI triage
+- Completed cases
+- Search across case, customer, and transaction data
+- Priority filters
+- Owner filters
+- AI recommendation-state filters
+- Queue sorting
+- Case export
+- Audit export
+
+The queue is paired with a detailed case workspace so the operator can review the selected record and make a decision without leaving the workflow.
+
+### Create operational case
+
+Workers can create a new operational case directly from the queue.
+
+The intake captures:
+
+- Case title
+- Case description
+- Customer or account ID
+- Transaction ID
+- Amount
+- Currency
+- Processor reference
+- Payment status
+- Reconciliation status
+- Due date
+
+Before creating the case, the operator can choose **Analyze description with AI** to preview AI guidance.
+
+The AI preview can return:
 
 - Classification
 - Priority
 - Confidence
-- Concise case summary
 - Suggested owner
+- Summary
 - Recommended next action
 - Risk signals
 - Missing information
 - Proposed resolution plan
 
-A human reviewer can then investigate the case, edit the underlying record, modify the AI recommendation, start work, approve it, or reject it. Each meaningful action is written to the case audit history.
+The worker can review that guidance before the case is created.
 
-## Product experience
+If the AI service is unavailable, OpsPilot creates the case without generated AI fields so the case can still enter the operational workflow.
 
-### Case Worker workspace
+## Human review workflow
 
-The worker experience is designed around day-to-day operational case handling.
+OpsPilot separates AI analysis from operational execution.
 
-Workers can:
+For an AI-assisted case, the worker can:
 
-- Create operational cases
-- Capture customer, transaction, amount, currency, processor, payment, reconciliation, and due-date context
-- Preview AI analysis before creating a case
-- Run AI triage on an existing untriaged case
-- Review confidence, classification, priority, owner, next action, risks, missing information, and resolution steps
-- Modify AI-generated recommendations before making a decision
-- Edit the underlying case record
-- Add investigation notes and decision rationale
-- Move cases into active work
-- Approve or reject recommendations
-- Search the queue by case, customer, transaction, or case content
-- Filter by priority, owner, and AI state
-- Sort by priority, due date, or recent activity
-- Export case and audit data
+1. Review the generated recommendation
+2. Inspect confidence, risk signals, and missing information
+3. Edit the underlying case record
+4. Modify the AI recommendation
+5. Add investigation notes or decision rationale
+6. Start work
+7. Approve or reject the recommendation
 
-### Admin workspace
+AI recommendations never execute financial, access, compliance, customer-impacting, or other consequential operational actions.
 
-The admin experience provides an operational view across the workspace.
-
-The dashboard surfaces:
-
-- Active case volume
-- High-priority cases
-- Cases awaiting AI triage
-- Total active exception value
-- AI recommendation acceptance rate
-- Workload by case status
-- AI-generated, reviewed, accepted, and awaiting-triage volumes
-- Recent operational activity
-
-Admin controls include:
-
-- Bulk AI triage for active untriaged cases
-- Bulk assignment of unowned cases
-- Bulk archival of completed cases
-- Access to the complete audit history
-- CSV case import
-- Case-data export
-- Audit-log export
-- Workspace data controls
+This keeps the operator accountable for the final decision while still using AI to accelerate analysis.
 
 ## Case lifecycle
 
-Cases support the following states:
+Cases support the following workflow states:
 
 ```
 New
@@ -89,35 +102,129 @@ Approved / Rejected / Resolved
 Archived
 ```
 
-AI-assisted cases enter **Needs Review**. Cases created or imported without AI analysis remain untriaged until a user explicitly requests AI assistance.
+AI-assisted cases enter **Needs Review**.
 
-## Human-in-the-loop design
+Cases created or imported without AI analysis remain untriaged until a user explicitly runs AI triage.
 
-OpsPilot deliberately separates **recommendation** from **execution**.
+## Admin Workspace
 
-The AI can propose what an operator should investigate or do next, but it cannot autonomously execute financial, access, compliance, customer-impacting, or other operational actions.
+The Admin workspace is centered on an **Operations Overview** dashboard.
 
-The interface reinforces this boundary by allowing users to:
+### Operational metrics
 
-1. Inspect the AI recommendation and its confidence.
-2. Review risk signals and missing information.
-3. Modify the recommendation.
-4. Add human context and rationale.
-5. Approve, reject, or continue investigation themselves.
+The current dashboard tracks:
 
-This makes confidence a review signal, not proof of correctness.
+- Active cases
+- High-priority cases
+- Cases not yet AI triaged
+- Active exception value
+- AI recommendation acceptance
+- Total operational records
+- Workload by status
+- AI-generated cases
+- Reviewed AI cases
+- Accepted AI cases
+- Cases awaiting AI triage
+
+The goal is to give an operations lead visibility into both human workload and AI-assisted workflow usage.
+
+### AI operations
+
+Admins can run AI triage across eligible active cases that have not yet been analyzed.
+
+The dashboard separately tracks:
+
+- Awaiting AI
+- AI generated
+- Reviewed AI
+- Accepted AI
+
+The product intentionally distinguishes actual model usage from ordinary case processing.
+
+### Queue controls
+
+Admin controls include:
+
+- Assigning unowned cases to an owner or queue
+- Archiving completed cases
+- Opening the worker queue
+- Reviewing recent operational activity
+- Opening the full audit history
+
+## Audit history
+
+OpsPilot records meaningful operational activity so the user can reconstruct what happened to a case.
+
+Recorded events include:
+
+- Case creation
+- CSV import
+- AI triage generation
+- AI triage failure
+- Case edits
+- AI recommendation modification
+- Status transitions
+- Owner assignment
+- Case archival
+
+Audit events preserve:
+
+- Case ID
+- Actor
+- Timestamp
+- Action
+- Note
+- Tracked field changes when relevant
+
+The **Audit History** view supports both workspace-level review and case-level change history.
+
+## Data Management
+
+The Admin workspace also contains a dedicated **Data Management** area.
+
+### Import cases
+
+Users can import operational records from CSV.
+
+Imported records intentionally remain untriaged until a worker requests AI analysis.
+
+A blank CSV template is available from the interface.
+
+### Export records
+
+Users can export:
+
+- Case records
+- Complete audit history
+
+These exports support reporting, reconciliation, testing, and workflow analysis.
+
+### Storage
+
+The current portfolio build stores cases and audit events in browser `localStorage`.
+
+That means:
+
+- Records persist across refreshes in the same browser
+- No seeded production data is loaded
+- Data remains local to the browser
+- Admin users can clear the workspace
+
+All demo data is synthetic.
 
 ## AI architecture
 
-Case analysis is performed through the server-side:
+Case analysis is handled by the server-side endpoint:
 
 ```
 POST /api/triage
 ```
 
-The route uses the **OpenAI Responses API** with strict structured output. The API key stays server-side.
+The route uses the **OpenAI Responses API** with strict JSON-schema structured output.
 
-The current schema requires:
+The API key remains server-side.
+
+The structured response requires:
 
 ```
 category
@@ -131,14 +238,29 @@ missingInformation
 resolutionPlan
 ```
 
-The AI is explicitly instructed to analyze only the supplied case, avoid inventing facts, lower confidence when information is ambiguous, and never claim that it executed an operational action.
+The model is instructed to:
 
-If the AI service is unavailable or is not configured, OpsPilot does **not** generate substitute AI fields. The case can still be created without a recommendation and triaged later.
+- Analyze only the supplied case
+- Avoid inventing facts
+- Lower confidence when context is ambiguous
+- Identify missing information
+- Surface relevant operational risks
+- Propose a short resolution plan
+- Never claim that it executed an operational action
+
+If the AI service is unavailable or unconfigured, OpsPilot does not generate substitute AI fields.
 
 ## Operational data model
 
-In addition to the core case title and description, OpsPilot can track operational context such as:
+OpsPilot can track:
 
+- Case ID
+- Title
+- Description
+- Status
+- Priority
+- Category
+- Owner
 - Customer ID
 - Transaction ID
 - Amount
@@ -147,61 +269,37 @@ In addition to the core case title and description, OpsPilot can track operation
 - Payment status
 - Reconciliation status
 - Due date
-- Owner
-- Category
-- Priority
-- AI state and confidence
-- Created and updated timestamps
+- AI state
+- AI confidence
+- Created timestamp
+- Updated timestamp
 
-This makes the demo closer to a real operations workflow than a standalone AI prompt interface.
+This lets the product demonstrate a real operational workflow instead of functioning as a standalone AI prompt interface.
 
-## Auditability
+## Product principles
 
-OpsPilot records operational events such as:
+### Human controlled
 
-- Case creation
-- CSV import
-- AI triage generation
-- Failed AI triage attempts
-- Case edits
-- AI recommendation modifications
-- Status transitions
-- Owner assignment
-- Case archival
+AI provides analysis and recommendations. A person owns the operational decision.
 
-Audit events include the case ID, actor, timestamp, note, and tracked field changes where relevant.
+### Explicit AI state
 
-Users can inspect the full audit stream or open the history for an individual case.
+The interface distinguishes between:
 
-## Data management
+- AI-generated recommendations
+- Cases that have not been AI triaged
 
-The Admin workspace includes CSV-based import and export workflows.
+### Auditable decisions
 
-### Import
+Important case actions and changes are recorded so decisions can be reviewed later.
 
-Operational records can be imported from CSV. Imported cases begin without AI-generated fields so that model analysis remains an explicit user action.
+### Operational continuity
 
-### Export
+A case can still be created and worked even when AI is unavailable.
 
-Users can export:
+### Structured assistance
 
-- Case records
-- Complete audit history
-
-These exports make the prototype useful for demonstrating reporting, reconciliation, and operational-governance workflows.
-
-## Persistence
-
-This portfolio build uses browser `localStorage` for case and audit persistence.
-
-That means:
-
-- Records survive page refreshes in the same browser.
-- No seeded production records are loaded.
-- Workspace data is local to the browser.
-- Admin users can clear the local workspace.
-
-All demo data is synthetic.
+AI output follows a fixed schema so recommendations can fit into an operational workflow instead of appearing as unstructured chat text.
 
 ## Tech stack
 
@@ -227,13 +325,13 @@ Open:
 http://localhost:3000
 ```
 
-Create a `.env.local` file and add:
+Create a `.env.local` file:
 
 ```bash
 OPENAI_API_KEY=your_openai_api_key
 ```
 
-Optionally specify a model:
+An optional model override can also be provided:
 
 ```bash
 OPENAI_MODEL=your_model_name
@@ -241,7 +339,7 @@ OPENAI_MODEL=your_model_name
 
 If `OPENAI_MODEL` is omitted, the API route uses its configured default model.
 
-Never commit API keys or other secrets to the repository.
+Never commit secrets to the repository.
 
 ## Product documentation
 
@@ -250,7 +348,7 @@ Never commit API keys or other secrets to the repository.
 - [Claude Code guidance](CLAUDE.md)
 - [AI build contract](AGENTS.md)
 
-## Product-building approach
+## How the product was built
 
 AI coding tools were used as implementation collaborators while product decisions remained human-owned, including:
 
@@ -259,13 +357,15 @@ AI coding tools were used as implementation collaborators while product decision
 - Scope and requirements
 - UX decisions
 - Human-review guardrails
-- Data model choices
+- Data-model decisions
 - Acceptance criteria
 - Testing decisions
 - Release decisions
 
-The project is intended to demonstrate product judgment at the intersection of **AI, operations, workflow design, data, and human oversight**.
+The project is intended to demonstrate product judgment at the intersection of **AI, operations, workflow design, data, controls, and human oversight**.
 
 ## Project status
 
-OpsPilot AI is a portfolio product and working prototype. It does not claim production usage, customer adoption, or business-impact metrics.
+OpsPilot Control is a portfolio product and working prototype.
+
+It does not claim production usage, customer adoption, or business-impact metrics.

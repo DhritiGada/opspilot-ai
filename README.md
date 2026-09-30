@@ -22,7 +22,7 @@ The product deliberately avoids autonomous consequential actions. Confidence is 
 
 ## Current AI boundary
 
-New case intake calls a server-side `/api/triage` endpoint backed by the OpenAI Responses API and strict structured output. The API key remains server-side. If the AI service is unavailable or unconfigured, OpsPilot falls back to deterministic triage and labels that result as Demo AI. The human-review contract is unchanged.\n\n### Environment\n\nSet `OPENAI_API_KEY` in the server/deployment environment. `OPENAI_MODEL` is optional; the route has a default model. Never commit secrets to the repository.
+New case intake calls a server-side `/api/triage` endpoint backed by the OpenAI Responses API and strict structured output. The API key remains server-side. If the AI service is unavailable or unconfigured, OpsPilot falls back to deterministic triage and labels that result as Demo AI. The human-review contract is unchanged. Environment Set `OPENAI_API_KEY` in the server/deployment environment. `OPENAI_MODEL` is optional; the route has a default model. Never commit secrets to the repository.
 
 ## Tech stack
 
